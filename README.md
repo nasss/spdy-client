@@ -35,9 +35,8 @@ req.end('World');
 
 GET request example :
 <pre><code>
-var get = client.request(
+var req = client.get(
             {
-                method: 'GET',
                 path : '',
                 url : '/',
                 port: 3000,
@@ -52,4 +51,49 @@ var get = client.request(
                                 
     }); 
     
+req.on('error', function(err){
+      logger.error(err);
+ });    
+    
+</code></pre>
+
+PING example :
+
+<pre><code>
+client.ping({
+                port: 3000,
+                host: 'localhost'
+                },
+                function(id){
+           		// success callback
+                }
+    );
+</code></pre>
+
+PUSH handler example :
+
+<code><pre>
+var req = client.request(
+            {
+                method: 'GET',
+                path : '',
+                url : '/',
+                port: 4000,
+                host: 'localhost',
+                pushcb : function(opt, originreq)
+                        {
+                           // application handling    
+                           // The client accepts the pushed data or not
+                            return {
+                                error : null,
+                                success : function(res){
+                                   //...
+                                }
+                            };
+                        }
+            },
+            function(response){
+                    //....
+                });   
+                
 </code></pre>
