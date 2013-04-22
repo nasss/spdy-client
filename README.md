@@ -21,10 +21,10 @@ var req = client.post(
                       },
                       function(response){
                         response.on('data', function (chunk) {
-                            var data = String.fromCharCode.apply(null, new Uint16Array(chunk));
-                        logger.info(data);
-                      });					 
-                    }
+                            	var data = String.fromCharCode.apply(null, new Uint16Array(chunk));
+                        	logger.info(data);
+                      		});					 
+                    	}
 );  
 req.write('Hello');
 req.end('World');
