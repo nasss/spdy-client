@@ -6,6 +6,7 @@ With this module, you can create SPDY clients in node.js. You can send requests 
 Usage
 ===========
 
+POST request example :
 <pre><code>
 var client = require('client');
 
@@ -29,6 +30,26 @@ var req = client.post(
 );  
 req.write('Hello');
 req.end('World');
+</code></pre>
 
 
+GET request example :
+<pre><code>
+var get = client.request(
+            {
+                method: 'GET',
+                path : '',
+                url : '/',
+                port: 3000,
+                host: 'localhost'
+            },
+        	function(response){
+                	logger.info("--- GET  RESPONSE --");
+                	response.once('data', function (chunk) {
+                    		var data = String.fromCharCode.apply(null, new Uint16Array(chunk));
+                    		logger.info(data);          
+                });    
+                                
+    }); 
+    
 </code></pre>
