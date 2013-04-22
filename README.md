@@ -7,6 +7,7 @@ Usage
 ===========
 
 <pre><code>
+var client = require('client');
 
 var req = client.post(
                       {
