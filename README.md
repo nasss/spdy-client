@@ -3,6 +3,8 @@ spdy-client
 
 With this module, you can create SPDY clients in node.js. You can send requests to the SPDY server and add listeners for response or data events.
 
+You need node-spdy module : https://github.com/indutny/node-spdy
+
 Usage
 ===========
 
