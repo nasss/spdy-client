@@ -41,8 +41,7 @@ client.get = function(options, callback) {
     return client.request(_options, callback);
 }
 
-// -------------------------------- Get TCP connection-----
-// return ClientSpdyConnection
+
 //
 // ### function getConnection (host, port, plain)
 // #### @host {String} server host
