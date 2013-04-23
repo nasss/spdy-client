@@ -7,7 +7,7 @@ Usage
 ===========
 
 POST request example :
-<pre><code>
+```javascript
 var client = require('client');
 
 var req = client.post(
@@ -30,11 +30,11 @@ var req = client.post(
 );  
 req.write('Hello');
 req.end('World');
-</code></pre>
+```
 
 
 GET request example :
-<pre><code>
+```javascript
 var req = client.get(
             {
                 path : '',
@@ -55,11 +55,11 @@ req.on('error', function(err){
       logger.error(err);
  });    
     
-</code></pre>
+```
 
 PING example :
 
-<pre><code>
+```javascript
 client.ping({
                 port: 3000,
                 host: 'localhost'
@@ -68,11 +68,11 @@ client.ping({
            		// success callback
                 }
     );
-</code></pre>
+```
 
 PUSH handler example :
 
-<code><pre>
+```javascript
 var req = client.request(
             {
                 method: 'GET',
@@ -96,4 +96,4 @@ var req = client.request(
                     //....
                 });   
                 
-</code></pre>
+```
