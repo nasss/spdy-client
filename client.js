@@ -74,6 +74,9 @@ client.request = function(options, callback) {
      */
     var spdyConnection = this.getConnection(options.host, options.port,
             options.plain);
+    /* Do not create new streams after GOAWAY */
+    if (spdyConnection.goAway) return;
+    
     /* second, push the request to the spdy connection */
     return spdyConnection.startRequest(options, callback);
 }
@@ -86,10 +89,26 @@ client.request = function(options, callback) {
 //
 client.ping = function(options, callback) {
     var conn = this.getConnection(options.host, options.port, options.plain);
+    /* Do not create new streams after GOAWAY */
+    if (conn.goAway) return;
     if (callback) {
         conn.addListener('ping', callback);
     }
     return conn.ping();
+}
+
+//
+// ### function goaway (host, port, plain)
+// #### @host {String} server host
+// #### @port {Integer} server port
+// #### @plain {Boolean} (optional) plain or tls connection
+// #### @status {0 | 1 | 2} (optional) closing reason
+// Stop accepting/sending streams on the connection
+//
+client.goaway = function(host, port, plain, status) {
+    var conn = this.getConnection(host, port, plain, status);
+    conn.goaway(status);
+    return (conn != null);
 }
 
 //
