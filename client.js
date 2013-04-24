@@ -26,7 +26,6 @@ client.setLogLevel = function(level) {
     request.logger.setLevel(level);
 }
 
-
 client.protocolSpdyVersion = 3;
 
 //
@@ -41,7 +40,6 @@ client.get = function(options, callback) {
     return client.request(_options, callback);
 }
 
-
 //
 // ### function getConnection (host, port, plain)
 // #### @host {String} server host
@@ -54,7 +52,8 @@ client.getConnection = function(host, port, plain) {
     var conn = this.connections[key];
     if (conn == null) {
         /* create a connection */
-        var conn = new connection.ClientSpdyConnection(host, port, plain, client.protocolSpdyVersion);
+        var conn = new connection.ClientSpdyConnection(host, port, plain,
+                client.protocolSpdyVersion);
         /* add it to the stack */
         this.connections[key] = conn;
     }
@@ -75,8 +74,9 @@ client.request = function(options, callback) {
     var spdyConnection = this.getConnection(options.host, options.port,
             options.plain);
     /* Do not create new streams after GOAWAY */
-    if (spdyConnection.goAway) return;
-    
+    if (spdyConnection.goAway)
+        return;
+
     /* second, push the request to the spdy connection */
     return spdyConnection.startRequest(options, callback);
 }
@@ -90,7 +90,8 @@ client.request = function(options, callback) {
 client.ping = function(options, callback) {
     var conn = this.getConnection(options.host, options.port, options.plain);
     /* Do not create new streams after GOAWAY */
-    if (conn.goAway) return;
+    if (conn.goAway)
+        return;
     if (callback) {
         conn.addListener('ping', callback);
     }
