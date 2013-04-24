@@ -51,18 +51,20 @@ function ClientSpdyConnection(host, port, plain, version) {
     this.deflate = this._deflate = spdy.utils.createDeflate(this.version);
     this.inflate = this._inflate = spdy.utils.createInflate(this.version);
     /* deflate and inflate fields may be only visible at framer level? */
-    this.framer = new spdy.protocol[''+this.version].Framer(spdy.utils.zwrap(this.deflate),
-            spdy.utils.zwrap(this.inflate));
+    this.framer = new spdy.protocol['' + this.version].Framer(spdy.utils
+            .zwrap(this.deflate), spdy.utils.zwrap(this.inflate));
 
     this.streams = {};
     this.streamsCount = 0;
     this.streamId = -1;
     this.pushId = 0;
     this.pingId = -1;
-    this.goaway = 0;
+    this.goAway = 0;
     this.pendingRequests = [];
     this._rstCode = 1;
     this.maxStreams = 100;
+    /* Last good Stream ID for a goaway frame */
+    this.lastGoodID = 0;
 
     /* Lock data */
     this._locked = false;
@@ -87,7 +89,7 @@ function ClientSpdyConnection(host, port, plain, version) {
         this.socket = tls.connect(port, host,
         /* can be parameterized correctly */
         {
-            NPNProtocols : [ 'spdy/'+this.version ],
+            NPNProtocols : [ 'spdy/' + this.version ],
             rejectUnauthorized : false
         }, function() {
             /* ready to start interacting with server */
@@ -210,6 +212,9 @@ function ClientSpdyConnection(host, port, plain, version) {
                             }
 
                         } else if (frame.type === "SYN_STREAM") {
+
+                            this.lastGoodID = frame.id;
+
                             /* Get original stream */
                             var originalReq = self.streams[frame.associated];
 
@@ -294,7 +299,8 @@ function ClientSpdyConnection(host, port, plain, version) {
                         }
 
                         else if (frame.type === 'RST_STREAM') {
-                            logger.info("GET RST_STREAM from server status= "+ frame.status);
+                            logger.info("GET RST_STREAM from server status= "
+                                    + frame.status);
                             self._rstCode = 0;
                             self.closeRequest(frame.id);
                         } else if (frame.type === 'PING') {
@@ -310,7 +316,7 @@ function ClientSpdyConnection(host, port, plain, version) {
                         } else if (frame.type === 'SETTINGS') {
                             /* TODO later */
                         } else if (frame.type === 'GOAWAY') {
-                            self.goaway = frame.lastId;
+                            self.goAway = frame.lastId;
                             /* TODO later */
                         } else if (frame.type === 'WINDOW_UPDATE') {
                             /* TODO later */
@@ -488,7 +494,7 @@ connection.ClientSpdyConnection = ClientSpdyConnection;
 // Writes ping frame
 //
 ClientSpdyConnection.prototype.ping = function() {
-    // It is a priority
+    /* It is a priority */
     var id = new Buffer(4);
     id.writeUInt32BE((this.pingId += 2) & 0x7fffffff, 0, true); // -ID
     return this.write(this.framer.pingFrame(id));
@@ -499,6 +505,8 @@ ClientSpdyConnection.prototype.ping = function() {
 // ### function closeConnection()
 // Close connection
 ClientSpdyConnection.prototype.closeConnection = function closeConnection() {
+    // close proprely
+    this.goaway(0);
     if (this.socket)
         this.socket.destroy();
 }
@@ -528,3 +536,27 @@ ClientSpdyConnection.prototype.closeRequest = function closeRequest(id, error) {
 
     delete this.streams[id];
 };
+
+//
+// ### function goaway ()
+// Stop accepting/sending streams on this connection
+//
+ClientSpdyConnection.prototype.goaway = function goaway(status) {
+
+    var header = new Buffer(16);
+
+    header.writeUInt32BE(0x80030007, 0, true); // Version and type
+    header.writeUInt32BE(0x00000008, 4, true); // Length
+
+    var id = new Buffer(4);
+    // Server last good StreamID
+    id.writeUInt32BE((this.lastGoodID) & 0x7fffffff, 0, true);
+    id.copy(header, 8, 0, 4);
+
+    var statusBuffer = new Buffer(4);
+    statusBuffer.writeUInt32BE((status || 0) & 0x7fffffff, 0, true);
+    statusBuffer.copy(header, 12, 0, 4);
+
+    this.goAway = this.streamId;
+    this.write(header);
+}
