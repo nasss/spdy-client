@@ -86,6 +86,10 @@ ClientSpdyRequest.prototype.halfClose = function halfClose() {
 // Writes data to socket
 //
 ClientSpdyRequest.prototype.write = function write(data, encoding, callback) {
+    // Do not send data to new connections after GOAWAY
+    if (this.isGoaway())
+        return;
+
     this._write(data, encoding, callback);
 }
 
@@ -184,6 +188,10 @@ ClientSpdyRequest.prototype._writeData = function _writeData(data, encoding,
 // Send FIN data frame
 //
 ClientSpdyRequest.prototype.end = function end(data, encoding, callback) {
+
+    // Do not send data to new connections after GOAWAY
+    if (this.isGoaway())
+        return;
 
     /* This client will NOT send further frames on that stream */
     if (this.halfclosed.client) {
@@ -312,3 +320,11 @@ ClientSpdyRequest.prototype.abort = function abort(cb) {
         cb();
 
 }
+
+//
+// ### function isGoaway ()
+// Returns true if any writes to that stream should be ignored
+//
+ClientSpdyRequest.prototype.isGoaway = function isGoaway() {
+    return this.connection.goAway && this.id > this.connection.goAway;
+};
