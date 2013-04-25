@@ -95,7 +95,7 @@ function ClientSpdyConnection(host, port, plain, version) {
             /* ready to start interacting with server */
             self.startConnection();
             self.socket.on('close', function() {
-                logger.error('Socket closed');
+                logger.info('Socket closed');
             });
         });
         this.socket.on('error', function(err) {
@@ -107,7 +107,7 @@ function ClientSpdyConnection(host, port, plain, version) {
             /* ready to start interacting with server */
             self.startConnection();
             self.socket.on('close', function() {
-                logger.error('Socket closed');
+                logger.info('Socket closed');
             });
         });
         this.socket.on('error', function(err) {
