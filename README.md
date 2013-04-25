@@ -14,7 +14,7 @@ var client = require('client');
 
 var req = client.post(
                       {
-      	                path : '',
+      	                path : '/',
                        	port: 4000,
                         host: 'localhost',
                         //plain : true // USE plain tcp connection, TLS otherwise
@@ -39,7 +39,7 @@ GET request example :
 ```javascript
 var req = client.get(
             {
-                path : '',
+                path : '/',
                 url : '/',
                 port: 3000,
                 host: 'localhost'
@@ -78,7 +78,7 @@ PUSH handler example :
 var req = client.request(
             {
                 method: 'GET',
-                path : '',
+                path : '/',
                 url : '/',
                 port: 4000,
                 host: 'localhost',
