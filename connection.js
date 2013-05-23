@@ -256,7 +256,9 @@ function ClientSpdyConnection(host, port, plain, version) {
 
                             var pushReqObj = new requestMod.ClientSpdyRequest(
                                     opt, null, this);
-                            pushReqObj.id = frame.id
+                            pushReqObj.id = frame.id;
+                            self.streams[frame.id]= pushReqObj;
+                            self.streamsCount++;
 
                             /*
                              * unidirectionnal : the client will not send this
