@@ -394,6 +394,7 @@ ClientSpdyConnection.prototype.write = function write(data, encoding) {
 ClientSpdyConnection.prototype.startConnection = function startConnection() {
     logger.info("/* started connection */");
     this.opened = true;
+    this.write(this.windowSizeFrame(10485760));
     this.socket.setTimeout(2 * 60 * 1000);
     this.socket.once('timeout', function ontimeout() {
         logger.error('connection timeout');
@@ -562,3 +563,28 @@ ClientSpdyConnection.prototype.goaway = function goaway(status) {
     this.goAway = this.streamId;
     this.write(header);
 }
+
+//
+// ### function windowSizeFrame (size)
+// #### @size {Number} data transfer window size
+// Sends SETTINGS frame with window size
+//
+ClientSpdyConnection.prototype.windowSizeFrame = function windowSizeFrame(size) {
+  var settings;
+
+  if (!(settings = ClientSpdyConnection.windowSizeCache[size])) {
+    settings = new Buffer(20);
+
+    settings.writeUInt32BE(0x80030004, 0, true); // Version and type
+    settings.writeUInt32BE((4 + 8) & 0x00FFFFFF, 4, true); // length
+    settings.writeUInt32BE(0x00000001, 8, true); // Count of entries
+
+    settings.writeUInt32BE(0x01000007, 12, true); // Entry ID and Persist flag
+    settings.writeUInt32BE(size & 0x7fffffff, 16, true); // Window Size (KB)
+
+    ClientSpdyConnection.windowSizeCache[size] = settings;
+  }
+
+  return settings;
+};
+ClientSpdyConnection.windowSizeCache = {};
