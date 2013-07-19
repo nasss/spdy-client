@@ -6,7 +6,6 @@ var spdy = require('spdy'),
     tls = require('tls'), 
     utils = require('./utils'),
     fs = require('fs'),
-    client = require('./client'),
     requestMod = require('./request'),
     log4js = require('log4js'),
     Buffer = require('buffer').Buffer;
