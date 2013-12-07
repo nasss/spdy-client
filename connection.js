@@ -50,9 +50,12 @@ function ClientSpdyConnection(host, port, plain, version) {
     /* code mostly copied from server.js:Connection(socket, pool, options) */
     this.deflate = this._deflate = spdy.utils.createDeflate(this.version);
     this.inflate = this._inflate = spdy.utils.createInflate(this.version);
+    this._spdyState = {}
+    this._spdyState.deflate = this.deflate;
+    this._spdyState.inflate = this.inflate;
     /* deflate and inflate fields may be only visible at framer level? */
-    this.framer = new spdy.protocol['' + this.version].Framer(spdy.utils
-            .zwrap(this.deflate), spdy.utils.zwrap(this.inflate));
+    this.framer = new spdy.protocol.framer(this.version);
+    this.framer.setCompression(this.deflate, this.inflate);
 
     this.streams = {};
     this.streamsCount = 0;
@@ -94,6 +97,7 @@ function ClientSpdyConnection(host, port, plain, version) {
         }, function() {
             /* ready to start interacting with server */
             self.startConnection();
+            self.emit('connected');
             self.socket.on('close', function() {
                 logger.info('Socket closed');
             });
@@ -106,6 +110,7 @@ function ClientSpdyConnection(host, port, plain, version) {
         this.socket = net.connect(port, host, function() {
             /* ready to start interacting with server */
             self.startConnection();
+            self.emit('connected');
             self.socket.on('close', function() {
                 logger.info('Socket closed');
             });
@@ -119,7 +124,8 @@ function ClientSpdyConnection(host, port, plain, version) {
      * create parser that will be responsible of receiving the data from the
      * server
      */
-    this.parser = spdy.parser.create(this, this.deflate, this.inflate);
+    this.parser = spdy.protocol.parser.create(this);
+    this.parser.setVersion(this.version);
     this.parser
             .on(
                     'frame',
@@ -137,7 +143,9 @@ function ClientSpdyConnection(host, port, plain, version) {
 
                             if (request == null) {
                                 /* send rst-stream with error INVALID_STREAM */
-                                self.write(self.framer.rstFrame(frame.id, 2));
+                                self.framer.rstFrame(frame.id, 2, function (err, frame) {
+                                    self.write(frame);
+                                });
 
                                 /* close connection */
                                 self.opened = false;
@@ -147,6 +155,7 @@ function ClientSpdyConnection(host, port, plain, version) {
 
                                 /* If we reached stream limit */
                                 if (self.streamsCount > self.maxStreams) {
+                                    logger.debug('Reached streams limit!');
                                     request.once('error', function onerror() {
                                     });
                                     /* REFUSED_STREAM */
@@ -179,11 +188,11 @@ function ClientSpdyConnection(host, port, plain, version) {
                             }
                         } else if (frame.type == 'DATA') {
                             var request = self.streams[frame.id];
-
                             if (request == null) {
                                 /* send rst-stream with error INVALID_STREAM */
-                                self.write(this.connection.framer.rstFrame(
-                                        frame.id, 2));
+                                this.connection.framer.rstFrame(frame.id, 2, function (err, frame) {
+                                    self.write(frame);
+                                });
 
                                 /* close connection */
                                 self.opened = false;
@@ -201,8 +210,9 @@ function ClientSpdyConnection(host, port, plain, version) {
                                          * should not reveive data from half
                                          * closed server
                                          */
-                                        self.write(self.framer.rstFrame(
-                                                frame.id, 9));
+                                        self.framer.rstFrame(frame.id, 9, function (err, frame) {
+                                            self.write(frame);
+                                        });
                                         return;
                                     }
 
@@ -224,12 +234,14 @@ function ClientSpdyConnection(host, port, plain, version) {
                                 /* send rst */
                                 if (frame.assoc == 0) {
                                     /* protocol error = 1 */
-                                    self.write(this.connection.framer.rstFrame(
-                                            frame.id, 1));
+                                    this.connection.framer.rstFrame(frame.id, 1, function (err, frame) {
+                                        self.write(frame);
+                                    });
                                 } else {
                                     /* http_protocol_error id = ??? */
-                                    self.write(this.connection.framer.rstFrame(
-                                            frame.id, 1));
+                                    this.connection.framer.rstFrame(frame.id, 1, function (err, frame) {
+                                        self.write(frame);
+                                    });
                                 }
                                 return;
                             } else if (frame.headers.host != originalReq.options.host) {
@@ -276,8 +288,9 @@ function ClientSpdyConnection(host, port, plain, version) {
 
                                 if (accept.error) {
                                     /* cancel the original stream */
-                                    self.write(this.connection.framer.rstFrame(
-                                            frame.associated, 5));
+                                    this.connection.framer.rstFrame(frame.associated, 5, function (err, frame) {
+                                        self.write(frame);
+                                    });
                                     accept.error();
                                 } else {
                                     /*
@@ -294,8 +307,9 @@ function ClientSpdyConnection(host, port, plain, version) {
                                 }
                             } else {
                                 /* cancel the original stream */
-                                self.write(this.connection.framer.rstFrame(
-                                        frame.associated, 5));
+                                this.connection.framer.rstFrame(frame.associated, 5, function (err, frame) {
+                                    self.write(frame);
+                                });
                             }
 
                         }
@@ -464,7 +478,7 @@ ClientSpdyConnection.prototype.doRequest = function doRequest(request) {
                     request.emit('socket', self.socket);
                     self._unlock();
                     request.flushPendingData(function() {
-                        logger.debug("DATA FLUNSHED");
+                        logger.debug("DATA FLUSHED");
                     });
                 });
     });
@@ -508,10 +522,12 @@ ClientSpdyConnection.prototype.ping = function() {
 // ### function closeConnection()
 // Close connection
 ClientSpdyConnection.prototype.closeConnection = function closeConnection() {
-    // close proprely
+    // close properly
     this.goaway(0);
     if (this.socket)
         this.socket.destroy();
+    // Make sure the opened flag has been set to false
+    this.opened = false;
 }
 
 //
@@ -525,7 +541,9 @@ ClientSpdyConnection.prototype.closeRequest = function closeRequest(id, error) {
 
     if (error) {
         if (this._rstCode) {
-            this.write(this.framer.rstFrame(id, this._rstCode));
+            this.framer.rstFrame(id, this._rstCode, function (err, frame) {
+                this.write(frame);
+            });
         }
     }
     if (error) {

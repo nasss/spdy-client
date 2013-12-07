@@ -40,6 +40,16 @@ client.get = function(options, callback) {
     return client.request(_options, callback);
 }
 
+client.flushConnection = function(host, port, plain) {
+    var key = getKeyFromTarget(host, port, plain);
+    this.connections[key] = null;
+}
+
+var getKeyFromTarget = function(host, port, plain) {
+    var key = (plain ? "http" : "https") + "://" + host + ":" + port;
+    return key;
+}
+
 //
 // ### function getConnection (host, port, plain)
 // #### @host {String} server host
@@ -74,8 +84,11 @@ client.request = function(options, callback) {
     var spdyConnection = this.getConnection(options.host, options.port,
             options.plain);
     /* Do not create new streams after GOAWAY */
-    if (spdyConnection.goAway)
+
+    if (spdyConnection.goAway) {
+        logger.debug('Received GOAWAY, not creating a new stream.');
         return;
+    }
 
     /* second, push the request to the spdy connection */
     return spdyConnection.startRequest(options, callback);
